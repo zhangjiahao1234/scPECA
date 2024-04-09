@@ -26,33 +26,33 @@ def CPM(df):
     output_df.index = df.index
     return output_df
 
-def RNA_process_mode_1(sample_name, genome):
+def RNA_process_mode_1(sample_name, genome, pkg_path):
     """
     bulk RNA-seq count
     :return: RNA FPKM
     """
     rna_df = pd.read_csv('{}_RNA.txt'.format(sample_name),sep='\t', header=None)
-    trans_df = pd.read_csv('../Data/{}_gene_length.txt'.format(genome), sep='\t', header=None)
+    trans_df = pd.read_csv(os.path.join(pkg_path, 'Data', '{}_gene_length.txt'.format(genome)), sep='\t', header=None)
     merged_df = pd.merge(rna_df, trans_df, on=0)
     rna_FPKM = FPKM(merged_df)
     rna_FPKM = rna_FPKM[rna_FPKM.iloc[:, 1] > 0.1]
     rna_FPKM.to_csv('{}_PSExp.txt'.format(sample_name), sep='\t', header=False, index=False)
 
-def RNA_process_mode_2(sample_name, genome):
+def RNA_process_mode_2(sample_name, genome, pkg_path):
     """
     scRNA-seq count without meta
     :return: pseudo bulk RNA FPKM
     """
     scrna_df = pd.read_csv('{}_scRNA.csv'.format(sample_name),index_col=0)
     scrna_df = scrna_df.sum(axis=1).to_frame()
-    trans_df = pd.read_csv('../Data/{}_gene_length.txt'.format(genome), sep='\t', header=None)
+    trans_df = pd.read_csv(os.path.join(pkg_path, 'Data', '{}_gene_length.txt'.format(genome)), sep='\t', header=None)
     merged_df = scrna_df.merge(trans_df, left_index=True, right_on=0)
     merged_df = merged_df.iloc[:, [0, 1, 3]]
     scrna_FPKM = FPKM(merged_df)
     scrna_FPKM = scrna_FPKM[scrna_FPKM.iloc[:, 1] > 0.1]
     scrna_FPKM.to_csv('{}_PSExp.txt'.format(sample_name), sep='\t', header=False, index=False)
 
-def RNA_process_mode_3(sample_name, genome):
+def RNA_process_mode_3(sample_name, genome, pkg_path):
     """
     scRNA-seq count with meta
     :return: pseudo bulk RNA FPKM for different cell types
@@ -61,7 +61,7 @@ def RNA_process_mode_3(sample_name, genome):
     meta = pd.read_csv('{}_scRNA_meta.csv'.format(sample_name), index_col=0)
     meta.columns = ['celltype']
     celltype_name = meta['celltype'].value_counts().reset_index()
-    trans_df = pd.read_csv('../Data/{}_gene_length.txt'.format(genome), sep='\t', header=None)
+    trans_df = pd.read_csv(os.path.join(pkg_path, 'Data', '{}_gene_length.txt'.format(genome)), sep='\t', header=None)
     for i in range(celltype_name.shape[0]):
         barcode_index = meta.loc[meta['celltype'] == celltype_name.iloc[0,0]].index
         scrna_df2 = scrna_df[barcode_index]

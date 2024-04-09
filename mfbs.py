@@ -47,10 +47,10 @@ def mfbs(MCFile, TFName, Element_name, motifName, motifWeight, Match2):
 	MTF_binding = sparse.csr_matrix(MTF_binding)
 	return MTF_binding
 
-def mfbs_c(N,TFName, Element_name, motifName, motifWeight, Match2):
+def mfbs_c(N,TFName, Element_name, motifName, motifWeight, Match2, celltype):
 	TFB = sparse.csr_matrix(([], ([], [])), shape=(len(TFName), len(Element_name)))
 	for i in range(N):
-		TFB1 = mfbs(".MotifTarget"+str(i+1)+".txt",TFName, Element_name, motifName, motifWeight, Match2)
+		TFB1 = mfbs("./{}/.MotifTarget".format(celltype)+str(i+1)+".txt",TFName, Element_name, motifName, motifWeight, Match2)
 		TFB = TFB + TFB1
 	return TFB
 

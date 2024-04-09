@@ -6,72 +6,81 @@ import os
 import scipy.io as scio
 from numpy.matlib import repmat
 import numpy_groupies as npg
-from mfbs import mfbs, mfbs_c
+from scPECA.mfbs import mfbs, mfbs_c
 
-def GRN(celltype, genome,num_processes):
+def GRN(celltype, genome, pkg_path, num_processes):
 	if "hg" in genome:
 		species = "human"
 	elif "mm" in genome:
 		species = "mouse"
-	C = pd.read_csv('openness2.bed', sep='\t', header=None)
+	C = pd.read_csv('./{}/openness2.bed'.format(celltype), sep='\t', header=None)
 	Element_name = C.iloc[:, 0]
 	Opn = C.iloc[:, 1]
 	Opn_median = C.iloc[:, 2]
 
 	# 读取mat文件
 	# Match2, motifName, motifWeight
-	MotifMatch_mouse_rmdup = scio.loadmat('../../Data/MotifMatch_{}_rmdup.mat'.format(species))
+	MotifMatch_rmdup = scio.loadmat(os.path.join(pkg_path, 'Data/MotifMatch_{}_rmdup.mat'.format(species)))
+	Match2 = np.hstack([np.array([x[0][0] for x in MotifMatch_rmdup['Match2']]).reshape(-1, 1), np.array([x[1][0] for x in MotifMatch_rmdup['Match2']]).reshape(-1, 1)])
+	motifName = np.vstack([item[0] for item in MotifMatch_rmdup['motifName']])
+	motifWeight = MotifMatch_rmdup['motifWeight']
+	
+	# Match2 = np.empty((MotifMatch_rmdup['Match2'].shape[0], 2), dtype='U100')
+	# for i in range(MotifMatch_rmdup['Match2'].shape[0]):
+	# 	Match2[i, 0] = MotifMatch_rmdup['Match2'][i, 0].item()
+	# 	Match2[i, 1] = MotifMatch_rmdup['Match2'][i, 1].item()
+	# motifName = np.empty((MotifMatch_rmdup['motifName'].shape[0], 1), dtype='U100')
+	# for i in range(MotifMatch_rmdup['motifName'].shape[0]):
+	# 	motifName[i, 0] = MotifMatch_rmdup['motifName'][i, 0].item()
+
 	# Exp_median, List, R2, TFExp_median, TFName
-	TFTG_corr_mouse = scio.loadmat('../../Prior/TFTG_corr_{}.mat'.format(species))
+	TFTG_corr = scio.loadmat(os.path.join(pkg_path, 'Prior/TFTG_corr_{}.mat'.format(species)))
+	TFName = np.vstack([item[0] for item in TFTG_corr['TFName']])
+	List = np.vstack([item[0] for item in TFTG_corr['List']])
+	R2 = TFTG_corr['R2']
+	Exp_median = TFTG_corr['Exp_median']
+	# List = np.empty((TFTG_corr['List'].shape[0], 1), dtype='U100')
+	# for i in range(TFTG_corr['List'].shape[0]):
+	# 	List[i, 0] = TFTG_corr['List'][i, 0].item()
+	# TFName = np.empty((TFTG_corr['TFName'].shape[0], 1), dtype='U100')
+	# for i in range(TFTG_corr['TFName'].shape[0]):
+	# 	TFName[i, 0] = TFTG_corr['TFName'][i, 0].item()
+	# Match2 = pd.read_table('../../Data/MotifMatch_{}.txt'.format(species), header = None).to_numpy()
+	# motifName = pd.read_table('../../Data/MotifMatch_{}_motifName.txt'.format(species), header = None).to_numpy()
+	# motifWeight = pd.read_table('../../Data/MotifMatch_{}_motifWeight.txt'.format(species), header = None).to_numpy()
 
-	Match2 = np.empty((MotifMatch_mouse_rmdup['Match2'].shape[0], 2), dtype='U100')
-	for i in range(MotifMatch_mouse_rmdup['Match2'].shape[0]):
-		Match2[i, 0] = MotifMatch_mouse_rmdup['Match2'][i, 0].item()
-		Match2[i, 1] = MotifMatch_mouse_rmdup['Match2'][i, 1].item()
 
-	motifName = np.empty((MotifMatch_mouse_rmdup['motifName'].shape[0], 1), dtype='U100')
-	for i in range(MotifMatch_mouse_rmdup['motifName'].shape[0]):
-		motifName[i, 0] = MotifMatch_mouse_rmdup['motifName'][i, 0].item()
 
-	motifWeight = MotifMatch_mouse_rmdup['motifWeight']
-
-	TFName = np.empty((TFTG_corr_mouse['TFName'].shape[0], 1), dtype='U100')
-	for i in range(TFTG_corr_mouse['TFName'].shape[0]):
-		TFName[i, 0] = TFTG_corr_mouse['TFName'][i, 0].item()
-
-	List = np.empty((TFTG_corr_mouse['List'].shape[0], 1), dtype='U100')
-	for i in range(TFTG_corr_mouse['List'].shape[0]):
-		List[i, 0] = TFTG_corr_mouse['List'][i, 0].item()
-
-	R2 = TFTG_corr_mouse['R2']
-	Exp_median = TFTG_corr_mouse['Exp_median']
 	# ---------------------------
 
 	N = num_processes
-	TF_binding = mfbs_c(N,TFName, Element_name, motifName, motifWeight, Match2)
+	TF_binding = mfbs_c(N,TFName, Element_name, motifName, motifWeight, Match2, celltype)
 
 	# gene expr
-	C = pd.read_csv('{}.txt'.format(celltype), sep='\t', header=None)
+	C = pd.read_csv('./{}/{}.txt'.format(celltype, celltype), sep='\t', header=None)
 	Symbol = C.iloc[:, 0]
 	G = C.iloc[:, 1]
 
 	# CR-TF
-	CRInfo_mouse = scio.loadmat('../../Data/CRInfo_{}.mat'.format(species))
-	C_TFName = np.empty((CRInfo_mouse['C_TFName'].shape[0]), dtype='U100')
-	for i in range(CRInfo_mouse['C_TFName'].shape[0]):
-		C_TFName[i] = CRInfo_mouse['C_TFName'][i, 0].item()
-	CR_TF = CRInfo_mouse['CR_TF']
-	CRName = np.empty((CRInfo_mouse['CRName'].shape[0]), dtype='U100')
-	for i in range(CRInfo_mouse['CRName'].shape[0]):
-		CRName[i] = CRInfo_mouse['CRName'][i, 0].item()
-	TFS = CRInfo_mouse['TFS']
+	CRInfo = scio.loadmat(os.path.join(pkg_path, 'Data/CRInfo_{}.mat'.format(species)))
+	C_TFName = np.vstack([item[0] for item in CRInfo['C_TFName']])
+	TFS = CRInfo['TFS']
+	CR_TF = CRInfo['CR_TF']
+	# C_TFName = np.empty((CRInfo['C_TFName'].shape[0]), dtype='U100')
+	# for i in range(CRInfo['C_TFName'].shape[0]):
+	# 	C_TFName[i] = CRInfo['C_TFName'][i, 0].item()
+	# CRName = np.vstack([item[0] for item in CRInfo['CRName']])
+	# CRName = np.empty((CRInfo['CRName'].shape[0]), dtype='U100')
+	# for i in range(CRInfo['CRName'].shape[0]):
+	# 	CRName[i] = CRInfo['CRName'][i, 0].item()
+
 
 	eita0 = -30.4395
 	eita1 = 0.8759
 	d, f = ismember(C_TFName, TFName)
 	C_TFName = C_TFName[d]
 	TFS = TFS[d]
-	CR_TF = CR_TF[:, d]
+	CR_TF = CR_TF[:, d[:,0]]
 	TFB = TF_binding[f].todense()
 	C_TFExp = np.zeros(len(C_TFName))
 	d, f = ismember(C_TFName, Symbol)
@@ -109,13 +118,13 @@ def GRN(celltype, genome,num_processes):
 	TFExp = G[f]
 	R2 = R2[np.where(d == True)[0], :]
 
-	C = pd.read_csv('./Enrichment/knownResults_TFrank.txt', header=None, sep='\t')
+	C = pd.read_csv('./{}/Enrichment/knownResults_TFrank.txt'.format(celltype), header=None, sep='\t')
 	d, f = ismember(TFName, C.iloc[:, 0])
 	TF_motif = np.zeros(len(TFName))
 	TF_motif[np.where(d == True)[0]] = C.iloc[:, 1][f]
 	TFExp = TFExp * TF_motif
 
-	C = pd.read_csv('peak_gene_100k_corr.bed', header=None, sep='\t')
+	C = pd.read_csv('./{}/peak_gene_100k_corr.bed'.format(celltype), header=None, sep='\t')
 	d, f = ismember(C.iloc[:, 0], Element_name)
 	d1, f1 = ismember(C.iloc[:, 1], geneName)
 	f_2 = np.zeros(shape=(C.shape[0], 1))
@@ -136,14 +145,16 @@ def GRN(celltype, genome,num_processes):
 	BOH = np.matmul(TFO, H1Tdense)
 	Score = np.multiply(np.multiply((np.dot(TFExp.reshape(-1, 1), G.reshape(-1, 1).T)), (2 ** np.abs(R2))), BOH)
 	Score[np.isnan(Score)] = 0
-	np.savetxt('TFTG_regulationScore.txt', Score, delimiter='\t')
-	np.savetxt('TFName.txt', TFName, fmt='%s', delimiter='\n')
+	np.savetxt('./{}/TFTG_regulationScore.txt'.format(celltype), Score, delimiter='\t')
+	# np.savetxt('TFName.txt', TFName, fmt='%s', delimiter='\n')
 
-	TFTGControl = scio.loadmat('../../Data/TFTG_{}_nagetriveControl.mat'.format(species))
-	Back_net = TFTGControl['Back_net']
-	for i in range(Back_net.shape[0]):
-		for j in range(Back_net.shape[1]):
-			Back_net[i, j] = Back_net[i, j].item()
+	TFTGControl = scio.loadmat(os.path.join(pkg_path, 'Data/TFTG_{}_nagetriveControl.mat'.format(species)))
+	Back_net = np.hstack([np.array([x[0] for x in TFTGControl['Back_net']]).reshape(-1, 1),
+						np.array([x[1] for x in TFTGControl['Back_net']]).reshape(-1, 1)])
+	# Back_net = TFTGControl['Back_net']
+	# for i in range(Back_net.shape[0]):
+	# 	for j in range(Back_net.shape[1]):
+	# 		Back_net[i, j] = Back_net[i, j].item()
 	d, f = ismember(Back_net[:, 0], TFName)
 	d1, f1 = ismember(Back_net[:, 1], geneName)
 	f_2 = np.zeros(shape=(Back_net.shape[0], 1))
@@ -155,7 +166,7 @@ def GRN(celltype, genome,num_processes):
 	aa = (f2[:, 1]) * Score.shape[0] + f2[:, 0]
 	Back_score = Score_T_1col[aa.astype(np.int64)].squeeze().T
 
-	Cut = np.percentile(Back_score, 99)
+	Cut = np.percentile(np.asarray(Back_score), 99)
 	[b, a] = np.where(Score.T > Cut)
 	c = np.where(Score_T_1col > Cut)[0]
 	c1 = Score_T_1col[c]
@@ -173,7 +184,7 @@ def GRN(celltype, genome,num_processes):
 	d = np.sort(np.asarray(c1).squeeze())[::-1]
 	f = np.argsort(np.asarray(c1).squeeze())[::-1]
 	Net = np.column_stack((Net[f], np.asarray(d).squeeze(), np.asarray(TFTG_RE)[f]))
-	filename = '{}_network.txt'.format(celltype)
+	filename = './{}/{}_network.txt'.format(celltype, celltype)
 	with open(filename, 'wt') as fid:
 		fid.write('\t'.join(['TF', 'TG', 'Score', 'FDR', 'REs']) + '\n')
 		for i in range(Net.shape[0]):
