@@ -6,7 +6,7 @@ It has a faster running speed and a lower memory footprint.
 
 ## Installation
 ```commandline
-pip install scPECA==1.16
+pip install scPECA==1.17
 ```
 
 ## Run scPECA
