@@ -131,7 +131,7 @@ pkg_path = os.path.dirname(scPECA.__file__)
 demo = scPECAclass(data_path, 'Cones', 'hg38', pkg_path) # Create a scPECA class
 demo.RNA_process(2) # Format 2 RNA data processing
 demo.ATAC_process(2) # Format 2 ATAC data processing
-demo.network('Cones', data_path) # PECA2 GRN construction
+demo.network('Cones', pkg_path) # PECA2 GRN construction
 ```
 
 The details of other optional parameters can be viewed in python.
